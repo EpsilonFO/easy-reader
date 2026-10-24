@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Easy Reader</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Transformez un texte en vidéo de lecture rapide : un mot à la fois, aligné sur sa lettre pivot en rouge.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Lexend:wght@400&family=Nunito+Sans:ital,wght@1,400&family=Literata:opsz,wght@7..72,400;7..72,600&family=Tinos&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="masthead">
+  <h1 class="wordmark" aria-label="Easy Reader">
+    <span class="reticle" aria-hidden="true"><span>Easy Re</span><span class="pivot">a</span><span>der</span></span>
+  </h1>
+  <p class="lede">Collez un texte : chaque mot s’affiche seul, au même endroit, aligné sur sa lettre pivot en rouge. Réglez la vitesse, regardez l’aperçu, puis créez la vidéo en MP4.</p>
+</header>
+
+<main class="workbench">
+  <section class="block block-text" aria-labelledby="h-text">
+    <div class="block-head">
+      <h2 id="h-text">Texte</h2>
+      <div class="tools">
+        <label class="btn btn-quiet" for="file">Importer un .txt</label>
+        <input type="file" id="file" accept=".txt,.md,text/plain" class="visually-hidden">
+        <button type="button" class="btn btn-quiet" id="clear">Effacer</button>
+      </div>
+    </div>
+    <label for="text" class="visually-hidden">Texte à lire</label>
+    <textarea id="text" spellcheck="false" rows="11" placeholder="Collez ou tapez votre texte ici…"></textarea>
+    <p class="stats" id="stats" aria-live="polite"></p>
+  </section>
+
+  <section class="block block-preview" aria-labelledby="h-preview">
+    <h2 id="h-preview" class="visually-hidden">Aperçu</h2>
+    <div class="screen" id="screen">
+      <canvas id="preview" role="img" aria-label="Aperçu de la vidéo"></canvas>
+    </div>
+    <div class="transport">
+      <button type="button" class="btn-icon" id="play" aria-label="Lire l’aperçu">
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+      </button>
+      <button type="button" class="btn-icon btn-icon-quiet" id="restart" aria-label="Revenir au début">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2.5v14H6zM19 5.5v13L9.5 12z"/></svg>
+      </button>
+      <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Position dans la vidéo">
+      <span class="clock" id="clock">0:00 / 0:00</span>
+    </div>
+
+    <div class="export">
+      <button type="button" class="btn btn-primary" id="export">Créer la vidéo MP4</button>
+      <p class="export-meta" id="export-meta"></p>
+      <div class="progress" id="progress" hidden>
+        <div class="bar" role="progressbar" aria-label="Création de la vidéo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><span id="bar-fill"></span></div>
+        <div class="progress-row">
+          <span id="progress-label">0 %</span>
+          <button type="button" class="btn btn-quiet" id="cancel">Annuler</button>
+        </div>
+      </div>
+      <div class="result" id="result" hidden>
+        <video id="result-video" controls playsinline muted></video>
+        <div class="result-actions">
+          <button type="button" class="btn btn-primary" id="save">Télécharger la vidéo</button>
+          <button type="button" class="btn btn-quiet" id="share" hidden>Partager ou enregistrer</button>
+        </div>
+        <p class="result-meta"><span id="result-name" class="result-name"></span><br><span id="result-meta"></span></p>
+      </div>
+      <p class="message" id="message" role="status"></p>
+    </div>
+  </section>
+
+  <section class="block block-settings" aria-labelledby="h-settings">
+    <h2 id="h-settings">Réglages</h2>
+
+    <fieldset class="group">
+      <legend>Vitesse</legend>
+      <div class="segmented" role="radiogroup" aria-label="Mode de vitesse">
+        <input type="radio" name="mode" id="mode-fixed" value="fixed" checked><label for="mode-fixed">Fixe</label>
+        <input type="radio" name="mode" id="mode-ramp" value="ramp"><label for="mode-ramp">Accélération</label>
+      </div>
+
+      <div class="field" id="speed-fixed">
+        <div class="field-row">
+          <label for="wpm">Mots par minute</label>
+          <output for="wpm" id="wpm-out" class="num">300</output>
+        </div>
+        <input type="range" id="wpm" min="100" max="1000" step="25" value="300">
+        <div class="scale" aria-hidden="true"><span>100</span><span>lecture normale ≈ 250</span><span>1000</span></div>
+      </div>
+
+      <div class="field" id="speed-ramp" hidden>
+        <div class="ramp">
+          <label for="wpm-from">De</label>
+          <input type="number" id="wpm-from" min="60" max="1500" step="5" value="250" inputmode="numeric">
+          <label for="wpm-to">à</label>
+          <input type="number" id="wpm-to" min="60" max="1500" step="5" value="750" inputmode="numeric">
+          <span>mots/min, en</span>
+          <label for="steps" class="visually-hidden">Nombre de paliers</label>
+          <input type="number" id="steps" min="1" max="12" step="1" value="5" inputmode="numeric">
+          <span>paliers</span>
+        </div>
+        <p class="hint" id="ramp-hint"></p>
+      </div>
+
+      <label class="check" for="pauses">
+        <input type="checkbox" id="pauses" checked>
+        <span><strong>Pauses naturelles</strong><br>Un peu plus de temps après un point, une virgule, un paragraphe ou un mot long.</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Image</legend>
+
+      <div class="field">
+        <span class="field-label" id="lbl-format">Format</span>
+        <div class="segmented segmented-4" role="radiogroup" aria-labelledby="lbl-format">
+          <input type="radio" name="format" id="fmt-916" value="9:16" checked><label for="fmt-916">9:16<small>Reels, TikTok</small></label>
+          <input type="radio" name="format" id="fmt-45" value="4:5"><label for="fmt-45">4:5<small>Post</small></label>
+          <input type="radio" name="format" id="fmt-11" value="1:1"><label for="fmt-11">1:1<small>Carré</small></label>
+          <input type="radio" name="format" id="fmt-169" value="16:9"><label for="fmt-169">16:9<small>YouTube</small></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label" id="lbl-theme">Fond</span>
+        <div class="segmented" role="radiogroup" aria-labelledby="lbl-theme">
+          <input type="radio" name="theme" id="th-creme" value="creme" checked><label for="th-creme"><i class="swatch" style="--sw:#ECE8DF"></i>Crème</label>
+          <input type="radio" name="theme" id="th-nuit" value="nuit"><label for="th-nuit"><i class="swatch" style="--sw:#111317"></i>Nuit</label>
+          <input type="radio" name="theme" id="th-blanc" value="blanc"><label for="th-blanc"><i class="swatch" style="--sw:#FFFFFF"></i>Blanc</label>
+        </div>
+      </div>
+
+      <div class="field-pair">
+        <div class="field">
+          <label class="field-label" for="font">Police</label>
+          <select id="font">
+            <option value="classique">Classique (Tinos)</option>
+            <option value="livre">Livre (Literata)</option>
+            <option value="hyperlisible">Très lisible (Atkinson)</option>
+            <option value="aeree">Aérée (Lexend)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="accent">Couleur de la lettre</label>
+          <div class="color-row">
+            <input type="color" id="accent" value="#A8191F">
+            <button type="button" class="btn btn-quiet" id="accent-reset">Par défaut</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label" id="lbl-pivot">Lettre en rouge</span>
+        <div class="segmented" role="radiogroup" aria-labelledby="lbl-pivot">
+          <input type="radio" name="pivot" id="pv-orp" value="orp" checked><label for="pv-orp">Point de lecture optimal</label>
+          <input type="radio" name="pivot" id="pv-mid" value="middle"><label for="pv-mid">Milieu du mot</label>
+        </div>
+        <p class="hint">L’œil reconnaît un mot plus vite quand il se pose un peu avant son milieu. Le point optimal colore la 2<sup>e</sup> lettre jusqu’à 5 lettres, la 3<sup>e</sup> jusqu’à 9, la 4<sup>e</sup> jusqu’à 13, puis la 5<sup>e</sup>.</p>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="title">Titre en haut de la vidéo <span class="opt">facultatif</span></label>
+        <input type="text" id="title" maxlength="90" placeholder="À quelle vitesse allez-vous décrocher ?">
+      </div>
+
+      <label class="check" for="show-speed">
+        <input type="checkbox" id="show-speed" checked>
+        <span><strong>Afficher la vitesse</strong> sous les mots</span>
+      </label>
+    </fieldset>
+  </section>
+</main>
+
+<footer class="colophon">
+  <p>Tout se passe dans votre navigateur : le texte n’est envoyé nulle part.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.min.js"></script>
+<script src="rsvp.js"></script>
+<script src="video.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
